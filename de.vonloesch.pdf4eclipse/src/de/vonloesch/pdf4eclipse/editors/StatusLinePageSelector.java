@@ -162,7 +162,7 @@ public class StatusLinePageSelector extends ContributionItem {
 		
 		GridData data = new GridData(SWT.CENTER,SWT.TOP, false, false);
 		data.widthHint = widthHint + (imageFirst.getBounds().width + 9)*4;
-		data.heightHint = 25;
+		data.heightHint = 32;
 		container.setLayoutData(data);
 	}
 

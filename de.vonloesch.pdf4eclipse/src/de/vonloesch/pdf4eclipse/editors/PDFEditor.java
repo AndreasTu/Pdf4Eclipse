@@ -500,7 +500,12 @@ public class PDFEditor extends EditorPart implements IResourceChangeListener,
 		position.setPageInfo(1, 1);
 		Composite container = new Composite(parent, SWT.NONE);
 		GridData gridData = new GridData(SWT.CENTER, SWT.TOP, true, false);
-		container.setLayout(new GridLayout());
+		GridLayout gridLayout = new GridLayout();
+		gridLayout.verticalSpacing=0;
+		gridLayout.horizontalSpacing=0;
+		gridLayout.marginWidth=0;
+		gridLayout.marginHeight=0;
+		container.setLayout(gridLayout);
 		container.setLayoutData(gridData);
 		position.fill(container);
 	}
