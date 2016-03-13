@@ -8,6 +8,7 @@
  * Contributors:
  *     Boris von Loesch - initial API and implementation
  *     MeisterYeti - pseudo-continuous scrolling and zooming by mouse wheel
+ *     Andreas Turban - Commands as Context menu; Display Page number in editor; Persisting zoomFactor over Eclipse Close/Open and Editor Close/Open
  ******************************************************************************/
 package de.vonloesch.pdf4eclipse.editors;
 
@@ -37,11 +38,14 @@ import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.IPreferenceChangeListener;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences.PreferenceChangeEvent;
 import org.eclipse.core.runtime.preferences.InstanceScope;
-import org.eclipse.jface.action.IContributionItem;
 import org.eclipse.jface.action.IStatusLineManager;
+import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
+import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
@@ -56,10 +60,13 @@ import org.eclipse.swt.events.MouseWheelListener;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.ScrollBar;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
@@ -130,6 +137,7 @@ public class PDFEditor extends EditorPart implements IResourceChangeListener,
 	private Cursor cursorHand;
 	private Cursor cursorArrow;
     private IProject eclipseProject;
+	private Menu pdfContextMenu;
 	
 	public PDFEditor() {
 		super();
@@ -148,12 +156,17 @@ public class PDFEditor extends EditorPart implements IResourceChangeListener,
 		ResourcesPlugin.getWorkspace().removeResourceChangeListener(this);
 		if (position != null) position.removePageChangeListener(this);
 		
-        IEclipsePreferences prefs = (new InstanceScope()).getNode(de.vonloesch.pdf4eclipse.Activator.PLUGIN_ID);
+        IEclipsePreferences prefs = getEclipsePrefNode();
 		prefs.removePreferenceChangeListener(this);
 		
 		if (f != null) f.close();
 		f = null;
 		pv = null;
+	}
+
+	@SuppressWarnings("deprecation")
+	public static IEclipsePreferences getEclipsePrefNode() {
+		return (new InstanceScope()).getNode(de.vonloesch.pdf4eclipse.Activator.PLUGIN_ID);
 	}
 	
 
@@ -188,7 +201,7 @@ public class PDFEditor extends EditorPart implements IResourceChangeListener,
 		}
 		f = null;
 		try {
-			IEclipsePreferences prefs = (new InstanceScope()).getNode(de.vonloesch.pdf4eclipse.Activator.PLUGIN_ID);
+			IEclipsePreferences prefs = getEclipsePrefNode();
 			int r = prefs.getInt(PreferenceConstants.PDF_RENDERER, PDFFactory.STRATEGY_SUN_JPEDAL);
 			f = PDFFactory.openPDFFile(file, r);
 		} catch (FileNotFoundException fnfe) {
@@ -255,11 +268,18 @@ public class PDFEditor extends EditorPart implements IResourceChangeListener,
 
 	@Override
 	public void createPartControl(final Composite parent) {
+		
+		GridLayout gridLayout = new GridLayout();
+		gridLayout.verticalSpacing=0;
+		gridLayout.horizontalSpacing=0;
+		gridLayout.marginWidth=0;
+		gridLayout.marginHeight=0;
+		parent.setLayout(gridLayout);
+		
 		cursorHand = new Cursor(Display.getDefault(), SWT.CURSOR_HAND);
 		cursorArrow = new Cursor(Display.getDefault(), SWT.CURSOR_ARROW);
-		
-		parent.setLayout(new FillLayout());
 		sc = new ScrolledComposite(parent, SWT.H_SCROLL | SWT.V_SCROLL);
+		sc.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 		pv = new PDFPageViewer(sc, this);
 		//pv = new PDFPageViewerAWT(sc, this);
 		sc.setContent(pv);
@@ -277,6 +297,12 @@ public class PDFEditor extends EditorPart implements IResourceChangeListener,
 			@Override
 			public void handleEvent(Event e) {
 				long time = e.time & 0xFFFFFFFFL;
+				
+				if((e.stateMask & SWT.CTRL) > 0) {
+					//CTRL pressed ignore scrolling because it will zoom.
+					e.doit = false;
+					return;
+				}
 				
 				//If a scrolling event occurs within a very short period of time
 				//after the last page change discard it. This avoids "overscrolling"
@@ -444,29 +470,16 @@ public class PDFEditor extends EditorPart implements IResourceChangeListener,
 
 			}
 		});
-
-		IStatusLineManager statusLineM = getEditorSite().getActionBars().getStatusLineManager();
-		IContributionItem[] items = statusLineM.getItems();
-		for (IContributionItem item : items) {
-			if (PDFPOSITION_ID.equals(item.getId())) {
-				position = (StatusLinePageSelector) item;
-				position.setPageChangeListener(this);
-			}
-		}
-		if (position == null) {
-			position = new StatusLinePageSelector(PDFPOSITION_ID, 15);
-			position.setPageChangeListener(this);
-			statusLineM.add(position);
-		}
-		position.setPageInfo(1, 1);
-
+	
+		createPageSelectionLine(parent);
+		
 		ResourcesPlugin.getWorkspace().addResourceChangeListener(this);
 
 		if (f != null) {
 			showPage(currentPage);
 		}
 		
-        IEclipsePreferences prefs = (new InstanceScope()).getNode(de.vonloesch.pdf4eclipse.Activator.PLUGIN_ID);
+        IEclipsePreferences prefs = getEclipsePrefNode();
         
 		prefs.addPreferenceChangeListener(this);
 		
@@ -474,11 +487,56 @@ public class PDFEditor extends EditorPart implements IResourceChangeListener,
 			pv.addListener(SWT.MouseWheel, mouseWheelPageListener);
 			isListeningForMouseWheel = true;
 		}
+		
+		pv.setZoomFactor(prefs.getFloat(PreferenceConstants.ZOOM_FACTOR, 1.0f));
 
 		initKeyBindingContext();
+		createContextMenu();
 	}
 
-    @Override
+	private void createPageSelectionLine(final Composite parent) {
+		position = new StatusLinePageSelector(PDFPOSITION_ID, 15);
+		position.setPageChangeListener(this);
+		position.setPageInfo(1, 1);
+		Composite container = new Composite(parent, SWT.NONE);
+		GridData gridData = new GridData(SWT.CENTER, SWT.TOP, true, false);
+		container.setLayout(new GridLayout());
+		container.setLayoutData(gridData);
+		position.fill(container);
+	}
+
+	private void createContextMenu() {
+		String id = org.eclipse.ui.texteditor.AbstractTextEditor.DEFAULT_EDITOR_CONTEXT_MENU_ID;
+
+		MenuManager manager = new MenuManager(id, id);
+		manager.setRemoveAllWhenShown(true);
+		pdfContextMenu = manager.createContextMenu(sc);
+		sc.setMenu(pdfContextMenu);
+		pv.setMenu(pdfContextMenu);
+		getEditorSite().registerContextMenu(manager, new ISelectionProvider() {
+
+			@Override
+			public void addSelectionChangedListener(ISelectionChangedListener listener) {
+			}
+
+			@Override
+			public ISelection getSelection() {
+				return null;
+			}
+
+			@Override
+			public void removeSelectionChangedListener(ISelectionChangedListener listener) {
+			}
+
+			@Override
+			public void setSelection(ISelection selection) {
+
+			}
+		}, false);
+
+	}
+
+	@Override
     public void preferenceChange(PreferenceChangeEvent event) {
     	//Check whether "Pseudo continuous scrolling" was changed
     	if (PreferenceConstants.PSEUDO_CONTINUOUS_SCROLLING.equals(event.getKey())) {
@@ -713,6 +771,7 @@ public class PDFEditor extends EditorPart implements IResourceChangeListener,
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Object getAdapter(@SuppressWarnings("rawtypes") Class required) {
 		if (IContentOutlinePage.class.equals(required)) {

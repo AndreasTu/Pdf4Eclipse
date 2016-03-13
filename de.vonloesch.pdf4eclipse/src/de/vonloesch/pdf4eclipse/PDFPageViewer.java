@@ -42,6 +42,7 @@ import de.vonloesch.pdf4eclipse.editors.PDFEditor;
 import de.vonloesch.pdf4eclipse.editors.handlers.ToggleLinkHighlightHandler;
 import de.vonloesch.pdf4eclipse.model.IPDFLinkAnnotation;
 import de.vonloesch.pdf4eclipse.model.IPDFPage;
+import de.vonloesch.pdf4eclipse.preferences.PreferenceConstants;
 
 
 /**
@@ -174,7 +175,7 @@ public class PDFPageViewer extends Canvas implements PaintListener, IPreferenceC
         zoomFactor = 1.f;
         this.addPaintListener(this);
         
-        IEclipsePreferences prefs = (new InstanceScope()).getNode(de.vonloesch.pdf4eclipse.Activator.PLUGIN_ID);
+        IEclipsePreferences prefs = PDFEditor.getEclipsePrefNode();
 		prefs.addPreferenceChangeListener(this);
 		
 		highlightLinks = prefs.getBoolean(ToggleLinkHighlightHandler.PREF_LINKHIGHTLIGHT_ID, true);
@@ -347,6 +348,8 @@ public class PDFPageViewer extends Canvas implements PaintListener, IPreferenceC
      */
     public void setZoomFactor(float factor) {
     	assert (factor > 0);
+        IEclipsePreferences prefs = PDFEditor.getEclipsePrefNode();
+        prefs.putFloat(PreferenceConstants.ZOOM_FACTOR, factor);
     	zoomFactor = factor;
     	showPage(currentPage);
     }
@@ -441,8 +444,7 @@ public class PDFPageViewer extends Canvas implements PaintListener, IPreferenceC
     	//if (swtImage != null) swtImage.dispose();
 		currentImage = null;
     	
-    	//IEclipsePreferences prefs = InstanceScope.INSTANCE.getNode(de.vonloesch.pdf4eclipse.Activator.PLUGIN_ID);
-    	IEclipsePreferences prefs = (new InstanceScope()).getNode(de.vonloesch.pdf4eclipse.Activator.PLUGIN_ID);
+    	IEclipsePreferences prefs = PDFEditor.getEclipsePrefNode();
     	prefs.removePreferenceChangeListener(this);
     }
 }

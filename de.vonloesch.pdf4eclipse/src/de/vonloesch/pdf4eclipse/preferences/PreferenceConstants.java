@@ -15,6 +15,7 @@ package de.vonloesch.pdf4eclipse.preferences;
  */
 public class PreferenceConstants {
 
-	public static final String PSEUDO_CONTINUOUS_SCROLLING = "pseudoContinuousScrolling";	
+	public static final String PSEUDO_CONTINUOUS_SCROLLING = "pseudoContinuousScrolling";
+	public static final String ZOOM_FACTOR = "zoomFactor";	
 	public static final String PDF_RENDERER = "pdfRenderer";
 }

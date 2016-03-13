@@ -193,6 +193,61 @@
             </command>
          </toolbar>
       </menuContribution>
+      <menuContribution
+            allPopups="false"
+            locationURI="popup:de.vonloesch.pdf4eclipse.editors.PDFEditor">
+            <command
+                  commandId="PDFViewer.command.Zoom"
+                  icon="icons/magnifier--minus.png"
+                  label="%command.tooltip"
+                  style="push"
+                  tooltip="%command.tooltip">
+               <parameter
+                     name="PDFViewer.command.parameter.zoom"
+                     value="-0.1">
+               </parameter>
+            </command>
+            <command
+                  commandId="PDFViewer.command.Zoom"
+                  icon="icons/magnifier--plus.png"
+                  label="%command.tooltip.2"
+                  style="push"
+                  tooltip="%command.tooltip.2">
+               <parameter
+                     name="PDFViewer.command.parameter.zoom"
+                     value="+0.1">
+               </parameter>
+            </command>
+            <command
+                  commandId="PDFViewer.command.Zoom"
+                  icon="icons/arrow-move.png"
+                  label="%command.tooltip.0"
+                  style="push"
+                  tooltip="%command.tooltip.0">
+               <parameter
+                     name="PDFViewer.command.parameter.zoom"
+                     value="fit">
+               </parameter>
+            </command>
+            <command
+                  commandId="PDFViewer.command.Zoom"
+                  icon="icons/arrow-resize.png"
+                  label="%command.tooltip.1"
+                  style="push"
+                  tooltip="%command.tooltip.1">
+               <parameter
+                     name="PDFViewer.command.parameter.zoom"
+                     value="fitH">
+               </parameter>
+            </command>
+            <command
+                  commandId="PDFViewer.command.ToggleLinkHighlight"
+                  icon="icons/chain--pencil.png"
+                  label="%command.tooltip.3"
+                  style="toggle"
+                  tooltip="%command.tooltip.3">
+            </command>
+      </menuContribution>
    </extension>
    <extension
          point="org.eclipse.core.expressions.definitions">
